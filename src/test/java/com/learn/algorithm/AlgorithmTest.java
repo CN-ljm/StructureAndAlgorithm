@@ -25,6 +25,18 @@ public class AlgorithmTest {
     }
 
 
+    @Test
+    public void selectSortTest(){
+        int[] array = createArray(80000, 10000000);
+        //printlnArray(array);
+        long start = System.currentTimeMillis();
+        int changes = SelectSort.sort(array);
+        long end = System.currentTimeMillis();
+        System.out.println("time:" + (end - start));
+        System.out.println(changes);
+        //printlnArray(array);
+    }
+
 
     //打印数组
     private static void printlnArray(int[] array){

@@ -37,6 +37,18 @@ public class AlgorithmTest {
         //printlnArray(array);
     }
 
+    @Test
+    public void insertSortTest(){
+        int[] array = createArray(80000, 10000000);
+        //printlnArray(array);
+        long start = System.currentTimeMillis();
+        int changes = insertSort.sort(array);
+        long end = System.currentTimeMillis();
+        System.out.println("time:" + (end - start));
+        System.out.println(changes);
+        //printlnArray(array);
+    }
+
 
     //打印数组
     private static void printlnArray(int[] array){

@@ -64,9 +64,21 @@ public class AlgorithmTest {
     @Test
     public void quickSortTest(){
         int[] array = createArray(80000, 10000000);
-        printlnArray(array);
+//        printlnArray(array);
         long start = System.currentTimeMillis();
         int changes = QuickSort.sort(array);
+        long end = System.currentTimeMillis();
+        System.out.println("time:" + (end - start));
+        System.out.println(changes);
+//        printlnArray(array);
+    }
+
+    @Test
+    public void mergeSortTest(){
+        int[] array = createArray(8, 100);
+        printlnArray(array);
+        long start = System.currentTimeMillis();
+        int changes = MergeSort.sort(array);
         long end = System.currentTimeMillis();
         System.out.println("time:" + (end - start));
         System.out.println(changes);

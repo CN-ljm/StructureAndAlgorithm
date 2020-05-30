@@ -5,7 +5,7 @@ import java.util.Arrays;
 /**
  * 斐波那契查找算法
  */
-public class FonacciSearch {
+public class FibonacciSearch {
 
 
     public static int SIZE = 20;

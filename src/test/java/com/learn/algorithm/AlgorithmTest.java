@@ -75,15 +75,36 @@ public class AlgorithmTest {
 
     @Test
     public void mergeSortTest(){
-        int[] array = createArray(8, 100);
-        printlnArray(array);
+        int[] array = createArray(80000, 10000000);
+//        printlnArray(array);
         long start = System.currentTimeMillis();
         int changes = MergeSort.sort(array);
         long end = System.currentTimeMillis();
         System.out.println("time:" + (end - start));
         System.out.println(changes);
-        printlnArray(array);
+//        printlnArray(array);
     }
+
+    @Test
+    public void radixSortTest(){
+        int[] array = createArray(10, 10000000);
+//        printlnArray(array);
+        long start = System.currentTimeMillis();
+        int changes = RadixSort.sort(array);
+        long end = System.currentTimeMillis();
+        System.out.println("time:" + (end - start));
+        System.out.println(changes);
+//        printlnArray(array);
+    }
+
+
+
+    @Test
+    public void fullSortTest(){
+        int[] arr = new int[]{1,2,3,4};
+        FullSort.sort(arr,0,arr.length);
+    }
+
 
 
     //打印数组

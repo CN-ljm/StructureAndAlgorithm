@@ -1,9 +1,10 @@
 package com.learn.algorithm.huffmantree;
 
-import jdk.internal.dynalink.beans.StaticClass;
-
 import java.nio.charset.Charset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author Created by liangjiaming on 2020/7/6
@@ -23,11 +24,13 @@ public class HuffmanUtil {
     public static Map<Byte, String> huffmanCodingMap = null;
 
     public static void main(String[] args) {
-//        String aa = "everything is possible, Do you believe it a";
-        String aa = "ab";
+        String aa = "everything is possible, Do you believe it a";
+//        String aa = "abbcccdddd";
         System.out.println("压缩前：" + aa);
         System.out.println("压缩前大小：" + aa.length());
         byte[] result = enCodingStrWithHuffman(aa);
+
+        System.out.println("哈夫曼编码表：" + huffmanCodingMap.toString());
 
         System.out.println("压缩后大小：" + result.length);
 
@@ -35,7 +38,8 @@ public class HuffmanUtil {
 
         System.out.println("解压后：" + res);
 
-        System.out.println("哈夫曼编码表：" + huffmanCodingMap.toString());
+
+//        System.out.println(0b001011);
 
     }
 
@@ -193,8 +197,8 @@ public class HuffmanUtil {
         byte[] target = new byte[len];
         int index = 0;
         for (int i=0; i < sb.length(); i+=8) {
-            if (i + 8 >= sb.length()) {
-                target[index] = (byte)Integer.parseInt(sb.substring(i, sb.length()), 2);
+            if (i + 8 > sb.length()) {
+                target[index] = (byte)Integer.parseInt(sb.substring(i), 2);
             } else {
                 target[index] = (byte)Integer.parseInt(sb.substring(i, i+8), 2);
             }

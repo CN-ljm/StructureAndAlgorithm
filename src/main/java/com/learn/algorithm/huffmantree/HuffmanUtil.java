@@ -1,10 +1,9 @@
 package com.learn.algorithm.huffmantree;
 
+import jdk.internal.dynalink.beans.StaticClass;
+
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author Created by liangjiaming on 2020/7/6
@@ -24,16 +23,32 @@ public class HuffmanUtil {
     public static Map<Byte, String> huffmanCodingMap = null;
 
     public static void main(String[] args) {
-        String aa = "abbccc";
-        /*String result = enCodingStrWithHuffman(aa);
+//        String aa = "everything is possible, Do you believe it a";
+        String aa = "ab";
+        System.out.println("压缩前：" + aa);
+        System.out.println("压缩前大小：" + aa.length());
+        byte[] result = enCodingStrWithHuffman(aa);
 
-        System.out.println(result);*/
+        System.out.println("压缩后大小：" + result.length);
 
-        // 000101111
+        String res = deCodingStrWithHuffman(result);
 
-        int i = Integer.valueOf("00010111", 2);
-        System.out.println(i);
+        System.out.println("解压后：" + res);
 
+        System.out.println("哈夫曼编码表：" + huffmanCodingMap.toString());
+
+    }
+
+    /**
+     * 解码哈夫曼编码字符串
+     * @param huffmanByte
+     * @return
+     */
+    public static String deCodingStrWithHuffman(byte[] huffmanByte) {
+
+        byte[] bytes = deCodingWithHuffman(huffmanByte);
+
+        return new String(bytes);
     }
 
     /**
@@ -41,20 +56,15 @@ public class HuffmanUtil {
      * @param str
      * @return
      */
-    public static String enCodingStrWithHuffman(String str) {
+    public static byte[] enCodingStrWithHuffman(String str) {
         // 构造哈夫曼树
         Node root = buildHuffmanTree(str);
         // 得到哈夫曼编码表
         buildHuffmanCodingMap(root);
         // 对字符串进行哈夫曼编码
         byte[] bytes = enCodingWithHuffman(str.getBytes(Charset.forName("UTF-8")));
-        StringBuilder res = new StringBuilder();
-        for (byte b: bytes) {
-            res.append(b + ",");
-        }
 
-
-        return res.toString();
+        return bytes;
     }
 
     /**
@@ -119,6 +129,55 @@ public class HuffmanUtil {
     }
 
     /**
+     * 使用哈夫曼编码表对赫夫曼字节数组进行解码
+     * @param huffmanBytes
+     * @return
+     */
+    public static byte[] deCodingWithHuffman(byte[] huffmanBytes) {
+        // 将哈夫曼编码表反转一下
+        Map<String, Byte> huffmanDecodingMap = new HashMap<>();
+        for (Map.Entry<Byte, String> entry: huffmanCodingMap.entrySet()) {
+            huffmanDecodingMap.put(entry.getValue(), entry.getKey());
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (int i=0; i < huffmanBytes.length; i++) {
+            // 赫夫曼编码得到二进制字符串最后一个编码可能不足八位，不需要用进行补位
+            boolean flag = (i == huffmanBytes.length-1);
+            sb.append(byteToBinaryString(!flag, huffmanBytes[i]));
+        }
+        System.out.println("哈夫曼编码：" + sb.toString());
+        String hfmStr = sb.toString();
+
+        //在这里进行解码
+        List<Byte> byteList = new ArrayList<>();
+        for (int i=0; i < hfmStr.length(); ) {
+            // 用来计算配置的字符串的个数
+            int count = 0;
+            String s = null;
+            while (true){
+                s = hfmStr.substring(i, i + count);
+                Byte b = huffmanDecodingMap.get(s);
+                if (b != null) {
+                    byteList.add(b);
+                    i += count;
+                    break;
+                }
+                count++;
+            }
+        }
+
+        byte[] bytes = new byte[byteList.size()];
+        int index = 0;
+        for (Byte b: byteList) {
+            bytes[index] = b;
+            index ++;
+        }
+
+        return bytes;
+    }
+
+    /**
      * 使用哈夫曼编码表对源字节数组进行编码
      * @param src
      * @return
@@ -128,16 +187,16 @@ public class HuffmanUtil {
         for (byte b: src) {
             sb.append(huffmanCodingMap.get(b));
         }
-        System.out.println(sb.toString());
+        System.out.println("哈夫曼编码：" + sb.toString());
         // 进行转码
         int len = (sb.length() + 7)/8;
         byte[] target = new byte[len];
         int index = 0;
         for (int i=0; i < sb.length(); i+=8) {
             if (i + 8 >= sb.length()) {
-                target[index] = (byte)Integer.parseInt(sb.substring(i, sb.length()));
+                target[index] = (byte)Integer.parseInt(sb.substring(i, sb.length()), 2);
             } else {
-                target[index] = (byte)Integer.parseInt(sb.substring(i, i+8));
+                target[index] = (byte)Integer.parseInt(sb.substring(i, i+8), 2);
             }
             index++;
         }
@@ -160,6 +219,22 @@ public class HuffmanUtil {
         // 说明是叶子节点了
         if (node.leftNode == null && node.rightNode == null) {
             codingMap.put(node.getB(), lcsb.toString());
+        }
+    }
+
+    // 字节数组转二进制字符串，为啥这么写，需要等待深入学习Java二进制运算的时候才能正确解答
+    private static String byteToBinaryString(boolean flag, byte b) {
+        int tmp = b;
+        // 看下是否需要进行补位
+        if (flag) {
+            tmp |= 256;
+        }
+        String str = Integer.toBinaryString(tmp); //返回的是补码
+        if (flag) {
+            return str.substring(str.length() - 8);
+        } else {
+            System.out.println(str);
+            return str;
         }
     }
 

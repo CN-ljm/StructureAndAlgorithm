@@ -21,10 +21,12 @@ public class HuffmanUtil {
     /**
      * 哈夫曼编码表
      */
-    public static Map<Byte, String> huffmanCodingMap = null;
+    public static HuffmanHelper huffmanHelper = new HuffmanHelper();
+
+    private static Map<Byte, String> huffmanCodingMap = null;
 
     public static void main(String[] args) {
-        String aa = "everything is possible, Do you believe it a";
+        String aa = "everything is possible, Do you believe it";
 //        String aa = "abbcccdddd";
         System.out.println("压缩前：" + aa);
         System.out.println("压缩前大小：" + aa.length());
@@ -37,9 +39,6 @@ public class HuffmanUtil {
         String res = deCodingStrWithHuffman(result);
 
         System.out.println("解压后：" + res);
-
-
-//        System.out.println(0b001011);
 
     }
 
@@ -122,7 +121,7 @@ public class HuffmanUtil {
      * @return
      */
     public static Map<Byte, String> buildHuffmanCodingMap(Node root) {
-        huffmanCodingMap = new HashMap<>();
+        huffmanCodingMap = huffmanHelper.getHuffmanCodingMap();
         /**
          * 从根节点到叶子节点路径：假设通往左节点路径用0表示，通往右节点路径用1表示。
          * 遍历所以叶子节点得到对应的路径编码
@@ -148,7 +147,21 @@ public class HuffmanUtil {
         for (int i=0; i < huffmanBytes.length; i++) {
             // 赫夫曼编码得到二进制字符串最后一个编码可能不足八位，不需要用进行补位
             boolean flag = (i == huffmanBytes.length-1);
-            sb.append(byteToBinaryString(!flag, huffmanBytes[i]));
+            if (flag) {
+                String s = byteToBinaryString(false, huffmanBytes[i]);
+                // 说明赫夫曼编码构造最后byte时，构造的二级制字符串是0开头，byte不能处理0开头，所以要记录
+                if (huffmanHelper.getLastBitLen() > 0) {
+                    StringBuilder tmp = new StringBuilder();
+                    for (int k = 0; k < huffmanHelper.getLastBitLen(); k++) {
+                        tmp.append("0");
+                    }
+                    sb.append(tmp.append(s).toString());
+                } else {
+                    sb.append(s);
+                }
+            } else {
+                sb.append(byteToBinaryString(true, huffmanBytes[i]));
+            }
         }
         System.out.println("哈夫曼编码：" + sb.toString());
         String hfmStr = sb.toString();
@@ -198,7 +211,29 @@ public class HuffmanUtil {
         int index = 0;
         for (int i=0; i < sb.length(); i+=8) {
             if (i + 8 > sb.length()) {
-                target[index] = (byte)Integer.parseInt(sb.substring(i), 2);
+                String lastStr = sb.substring(i);
+                target[index] = (byte)Integer.parseInt(lastStr, 2);
+                // 计算0的个数，直到下一个是1
+                int count = 0;
+                boolean containOne = false;
+                if (lastStr.startsWith("0")) {
+                    String[] split = lastStr.split("");
+                    for (String s: split) {
+                        if ("0".equals(s)) {
+                            count++;
+                        }
+                        else {
+                            containOne = true;
+                            break;
+                        }
+                    }
+                    //全部是0的话，由于byte本身也包含一个0，所以解码的时候就少补一个
+                    if (!containOne) {
+                        count -= 1;
+                    }
+                    huffmanHelper.setLastBitLen(count);
+                }
+
             } else {
                 target[index] = (byte)Integer.parseInt(sb.substring(i, i+8), 2);
             }

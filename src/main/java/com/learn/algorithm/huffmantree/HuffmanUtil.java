@@ -1,6 +1,8 @@
 package com.learn.algorithm.huffmantree;
 
-import java.nio.charset.Charset;
+import com.learn.help.utils.FileUtil;
+
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,20 +28,35 @@ public class HuffmanUtil {
     private static Map<Byte, String> huffmanCodingMap = null;
 
     public static void main(String[] args) {
-        String aa = "everything is possible, Do you believe it";
-//        String aa = "abbcccdddd";
-        System.out.println("压缩前：" + aa);
-        System.out.println("压缩前大小：" + aa.length());
-        byte[] result = enCodingStrWithHuffman(aa);
+//        huffmanZip("E:/test/hello.txt", "E:/test/hello.zip");
+        huffmanUnzip("E:/test/hello.zip", "E:/test/hello-src.txt");
+    }
 
-        System.out.println("哈夫曼编码表：" + huffmanCodingMap.toString());
+    /**
+     * 赫夫曼压缩
+     * @param srcPath 源路径
+     * @param tarPath 目标路径
+     */
+    public static void huffmanZip(String srcPath, String tarPath) {
+        byte[] bytes = FileUtil.readFileWithNIO(srcPath);
+        byte[] zipBytes = enCodingByteWithHuffman(bytes);
+        FileUtil.writeFileWithNIO(zipBytes, tarPath);
+        // 将赫夫曼编码表写进压缩目录中
+        saveHuffmanCodingMap(tarPath + ".huf");
+    }
 
-        System.out.println("压缩后大小：" + result.length);
-
-        String res = deCodingStrWithHuffman(result);
-
-        System.out.println("解压后：" + res);
-
+    /**
+     * 赫夫曼解压
+     * @param srcPath 源路径
+     * @param tarPath 目标路径
+     */
+    public static void huffmanUnzip(String srcPath, String tarPath) {
+        byte[] bytes = FileUtil.readFileWithNIO(srcPath);
+        // 读取赫夫曼编码表
+        huffmanHelper = readHuffmanCodingMap(srcPath + ".huf");
+        huffmanCodingMap = huffmanHelper.getHuffmanCodingMap();
+        byte[] zipBytes = deCodingWithHuffman(bytes);
+        FileUtil.writeFileWithNIO(zipBytes, tarPath);
     }
 
     /**
@@ -56,29 +73,27 @@ public class HuffmanUtil {
 
     /**
      * 使用哈夫曼树对字符串进行编码
-     * @param str
+     * @param bytes
      * @return
      */
-    public static byte[] enCodingStrWithHuffman(String str) {
+    public static byte[] enCodingByteWithHuffman(byte[] bytes) {
         // 构造哈夫曼树
-        Node root = buildHuffmanTree(str);
+        Node root = buildHuffmanTree(bytes);
         // 得到哈夫曼编码表
         buildHuffmanCodingMap(root);
         // 对字符串进行哈夫曼编码
-        byte[] bytes = enCodingWithHuffman(str.getBytes(Charset.forName("UTF-8")));
-
-        return bytes;
+        byte[] resBytes = getHuffmanByte(bytes);
+        return resBytes;
     }
 
     /**
      * 构建赫夫曼树
-     * @param str 输入原文
+     * @param bytes 输入原文
      * @return
      */
-    public static Node buildHuffmanTree(String str) {
+    public static Node buildHuffmanTree(byte[] bytes) {
         // 先得到字节集合
         Map<Byte, Integer> byteMap = new HashMap<>();
-        byte[] bytes = str.getBytes(Charset.forName("UTF-8"));
         for (byte b: bytes) {
             byteMap.put(b, byteMap.getOrDefault(b, 0) + 1);
         }
@@ -163,7 +178,7 @@ public class HuffmanUtil {
                 sb.append(byteToBinaryString(true, huffmanBytes[i]));
             }
         }
-        System.out.println("哈夫曼编码：" + sb.toString());
+//        System.out.println("哈夫曼编码：" + sb.toString());
         String hfmStr = sb.toString();
 
         //在这里进行解码
@@ -199,12 +214,12 @@ public class HuffmanUtil {
      * @param src
      * @return
      */
-    public static byte[] enCodingWithHuffman(byte[] src) {
+    public static byte[] getHuffmanByte(byte[] src) {
         StringBuilder sb = new StringBuilder();
         for (byte b: src) {
             sb.append(huffmanCodingMap.get(b));
         }
-        System.out.println("哈夫曼编码：" + sb.toString());
+//        System.out.println("哈夫曼编码：" + sb.toString());
         // 进行转码
         int len = (sb.length() + 7)/8;
         byte[] target = new byte[len];
@@ -243,6 +258,64 @@ public class HuffmanUtil {
         return target;
     }
 
+    // 读取赫夫曼编码表
+    private static HuffmanHelper readHuffmanCodingMap(String path) {
+        File file = new File(path);
+        if (!file.exists()) {
+            return null;
+        }
+        FileInputStream fin = null;
+        ObjectInputStream ois = null;
+        HuffmanHelper helper = null;
+        try {
+            fin = new FileInputStream(path);
+            ois = new ObjectInputStream(fin);
+            helper = (HuffmanHelper) ois.readObject();
+
+            ois.close();
+            fin.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        } finally {
+            close(ois);
+            close(fin);
+        }
+        return helper;
+    }
+
+    // 保存赫夫曼编码表
+    private static void saveHuffmanCodingMap(String path) {
+        if (huffmanHelper.getHuffmanCodingMap() == null) {
+            return;
+        }
+        FileOutputStream fos = null;
+        ObjectOutputStream oos = null;
+        try {
+            File file = new File(path);
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+            fos = new FileOutputStream(file);
+            oos = new ObjectOutputStream(fos);
+            oos.writeObject(huffmanHelper);
+
+            oos.close();
+            fos.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }finally {
+            close(oos);
+            close(fos);
+        }
+
+    }
+
     // 遍历哈夫曼树
     private static void traverseHuffmanTree(Map<Byte, String> codingMap, String sb, Node node) {
         StringBuilder lcsb = new StringBuilder();
@@ -272,8 +345,18 @@ public class HuffmanUtil {
         if (flag) {
             return str.substring(str.length() - 8);
         } else {
-            System.out.println(str);
             return str;
+        }
+    }
+
+    // 关闭流
+    private static void close(Closeable closeable) {
+        if (closeable != null) {
+            try {
+                closeable.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 

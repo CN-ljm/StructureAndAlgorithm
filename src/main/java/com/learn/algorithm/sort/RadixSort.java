@@ -1,4 +1,4 @@
-package com.learn.algorithm;
+package com.learn.algorithm.sort;
 
 import java.util.Stack;
 

@@ -1,4 +1,4 @@
-package com.learn.algorithm;
+package com.learn.algorithm.sort;
 
 /**
  * 冒泡排序算法

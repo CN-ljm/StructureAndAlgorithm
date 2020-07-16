@@ -3,6 +3,8 @@ package com.learn.algorithm.huffmantree;
 import com.learn.help.utils.FileUtil;
 
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,13 +25,17 @@ public class HuffmanUtil {
     /**
      * 哈夫曼编码表
      */
-    public static HuffmanHelper huffmanHelper = new HuffmanHelper();
+    public static HuffmanHelper huffmanHelper = null;
 
     private static Map<Byte, String> huffmanCodingMap = null;
 
+    // 一次性读取文件大小先来 20M
+    private static int ONCE_READ_SIZE = 1024 * 1024 * 10;
+
     public static void main(String[] args) {
-//        huffmanZip("E:/test/hello.txt", "E:/test/hello.zip");
-        huffmanUnzip("E:/test/hello.zip", "E:/test/hello-src.txt");
+        huffmanZip("E:/test/aa.txt", "E:/test/aa.zip");
+        System.out.println(huffmanCodingMap.toString());
+//        huffmanUnzip("E:/test/aa.zip", "E:/test/aa-src.txt");
     }
 
     /**
@@ -38,9 +44,98 @@ public class HuffmanUtil {
      * @param tarPath 目标路径
      */
     public static void huffmanZip(String srcPath, String tarPath) {
-        byte[] bytes = FileUtil.readFileWithNIO(srcPath);
+        // 先读完整个文件得到文件对应的赫夫曼编码表
+        beforeEnCodingByteWithHuffman(srcPath);
+
+        // 进行赫夫曼压缩
+        File inFile = new File(srcPath);
+        if (!inFile.exists()) {
+            return;
+        }
+        //先建好文件
+        String prefix = tarPath.substring(0, tarPath.lastIndexOf("/"));
+        String[] tmp = tarPath.split("/");
+        if (tmp.length < 2) {
+            throw new RuntimeException("文件路径错误");
+        }
+        File file = new File(prefix);
+        if (!file.exists()) {
+            file.mkdirs();
+        }
+        File outFile = new File(tarPath);
+        FileInputStream fin = null;
+        FileOutputStream fout = null;
+        FileChannel inChannel = null;
+        FileChannel outChannel = null;
+        try {
+            if (!outFile.exists()) {
+                outFile.createNewFile();
+            }
+
+            fin = new FileInputStream(inFile);
+            fout = new FileOutputStream(outFile);
+            inChannel = fin.getChannel();
+            outChannel = fout.getChannel();
+            ByteBuffer bb = ByteBuffer.allocate(ONCE_READ_SIZE);
+            while (inChannel.read(bb) > 0) {
+                // 得到对应的赫夫曼编码
+                //这样分批编码的话，最后一个不满八位怎么算，，，计入下一次来计算
+                bb.flip();
+                byte[] srcByte = new byte[bb.limit()];
+                bb.get(srcByte);
+                byte[] bytes = enCodingByteWithHuffman(srcByte);
+                outChannel.write(ByteBuffer.wrap(bytes));
+
+                bb.clear();
+            }
+            // 处理最后的不满8位的字符串
+            String lastStr = huffmanHelper.getLastByteStr();
+            if (lastStr != null && !"".equals(lastStr)) {
+                //判断是不是 0 开头
+                byte lastByte = (byte) Integer.parseInt(lastStr, 2);
+                if (lastStr.startsWith("0")) {
+                    // 计算0的个数，直到下一个是1
+                    int count = 0;
+                    boolean containOne = false;
+                    if (lastStr.startsWith("0")) {
+                        String[] split = lastStr.split("");
+                        for (String s: split) {
+                            if ("0".equals(s)) {
+                                count++;
+                            }
+                            else {
+                                containOne = true;
+                                break;
+                            }
+                        }
+                        //全部是0的话，由于byte本身也包含一个0，所以解码的时候就少补一个
+                        if (!containOne) {
+                            count -= 1;
+                        }
+                        huffmanHelper.setFillZeroCount(count);
+                    }
+                }
+                outChannel.write(ByteBuffer.wrap(new byte[]{lastByte}));
+            }
+
+
+            outChannel.close();
+            inChannel.close();
+            fout.close();
+            fin.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }finally {
+            close(outChannel);
+            close(inChannel);
+            close(fout);
+            close(fin);
+        }
+
+        /*byte[] bytes = FileUtil.readFileWithNIO(srcPath);
         byte[] zipBytes = enCodingByteWithHuffman(bytes);
-        FileUtil.writeFileWithNIO(zipBytes, tarPath);
+        FileUtil.writeFileWithNIO(zipBytes, tarPath);*/
+
         // 将赫夫曼编码表写进压缩目录中
         saveHuffmanCodingMap(tarPath + ".huf");
     }
@@ -72,15 +167,31 @@ public class HuffmanUtil {
     }
 
     /**
+     * 根据原文件得到赫夫曼编码帮助对象
+     * @param srcPath 原文件路径
+     * @return
+     */
+    public static HuffmanHelper beforeEnCodingByteWithHuffman(String srcPath) {
+        HuffmanHelper helper = new HuffmanHelper();
+        // 构造哈夫曼树
+        Node root = buildHuffmanTree(srcPath);
+        // 得到哈夫曼编码表
+        Map<Byte, String> byteStringMap = buildHuffmanCodingMap(root);
+        helper.setHuffmanCodingMap(byteStringMap);
+
+        // 复制两个给全局对象
+        huffmanCodingMap = byteStringMap;
+        huffmanHelper = helper;
+
+        return helper;
+    }
+
+    /**
      * 使用哈夫曼树对字符串进行编码
      * @param bytes
      * @return
      */
     public static byte[] enCodingByteWithHuffman(byte[] bytes) {
-        // 构造哈夫曼树
-        Node root = buildHuffmanTree(bytes);
-        // 得到哈夫曼编码表
-        buildHuffmanCodingMap(root);
         // 对字符串进行哈夫曼编码
         byte[] resBytes = getHuffmanByte(bytes);
         return resBytes;
@@ -88,15 +199,12 @@ public class HuffmanUtil {
 
     /**
      * 构建赫夫曼树
-     * @param bytes 输入原文
+     * @param srcPath 输入原文
      * @return
      */
-    public static Node buildHuffmanTree(byte[] bytes) {
+    public static Node buildHuffmanTree(String srcPath) {
         // 先得到字节集合
-        Map<Byte, Integer> byteMap = new HashMap<>();
-        for (byte b: bytes) {
-            byteMap.put(b, byteMap.getOrDefault(b, 0) + 1);
-        }
+        Map<Byte, Integer> byteMap = countByteByReadFile(srcPath);
 
         // 将得到的字节统计结果组装成一个个哈夫曼树节点
         List<Node> nodeList = new ArrayList<>();
@@ -136,14 +244,14 @@ public class HuffmanUtil {
      * @return
      */
     public static Map<Byte, String> buildHuffmanCodingMap(Node root) {
-        huffmanCodingMap = huffmanHelper.getHuffmanCodingMap();
+        Map<Byte, String> huffmanMap = new HashMap<>();
         /**
          * 从根节点到叶子节点路径：假设通往左节点路径用0表示，通往右节点路径用1表示。
          * 遍历所以叶子节点得到对应的路径编码
          */
-        traverseHuffmanTree(huffmanCodingMap, "", root);
+        traverseHuffmanTree(huffmanMap, "", root);
 
-        return huffmanCodingMap;
+        return huffmanMap;
     }
 
     /**
@@ -165,9 +273,9 @@ public class HuffmanUtil {
             if (flag) {
                 String s = byteToBinaryString(false, huffmanBytes[i]);
                 // 说明赫夫曼编码构造最后byte时，构造的二级制字符串是0开头，byte不能处理0开头，所以要记录
-                if (huffmanHelper.getLastBitLen() > 0) {
+                if (huffmanHelper.getFillZeroCount() > 0) {
                     StringBuilder tmp = new StringBuilder();
-                    for (int k = 0; k < huffmanHelper.getLastBitLen(); k++) {
+                    for (int k = 0; k < huffmanHelper.getFillZeroCount(); k++) {
                         tmp.append("0");
                     }
                     sb.append(tmp.append(s).toString());
@@ -214,12 +322,15 @@ public class HuffmanUtil {
      * @param src
      * @return
      */
-    public static byte[] getHuffmanByte(byte[] src) {
+    private static byte[] getHuffmanByte(byte[] src) {
         StringBuilder sb = new StringBuilder();
+        // 先看下之前有没有剩下的
+        if (huffmanHelper.getLastByteStr() != null && !"".equals(huffmanHelper.getLastByteStr())) {
+            sb.append(huffmanHelper.getLastByteStr());
+        }
         for (byte b: src) {
             sb.append(huffmanCodingMap.get(b));
         }
-//        System.out.println("哈夫曼编码：" + sb.toString());
         // 进行转码
         int len = (sb.length() + 7)/8;
         byte[] target = new byte[len];
@@ -227,7 +338,8 @@ public class HuffmanUtil {
         for (int i=0; i < sb.length(); i+=8) {
             if (i + 8 > sb.length()) {
                 String lastStr = sb.substring(i);
-                target[index] = (byte)Integer.parseInt(lastStr, 2);
+                huffmanHelper.setLastByteStr(lastStr);
+                /*target[index] = (byte)Integer.parseInt(lastStr, 2);
                 // 计算0的个数，直到下一个是1
                 int count = 0;
                 boolean containOne = false;
@@ -247,15 +359,53 @@ public class HuffmanUtil {
                         count -= 1;
                     }
                     huffmanHelper.setLastBitLen(count);
-                }
+                }*/
 
             } else {
+                huffmanHelper.setLastByteStr(null);
                 target[index] = (byte)Integer.parseInt(sb.substring(i, i+8), 2);
             }
             index++;
         }
 
         return target;
+    }
+
+    // 读取文件，统计各个字节数量，支持大文件读取
+    private static Map<Byte, Integer> countByteByReadFile(String path) {
+        Map<Byte, Integer> countBytes = new HashMap<>();
+        File file = new File(path);
+        FileInputStream fin = null;
+        FileChannel channel = null;
+        try {
+            fin = new FileInputStream(file);
+            channel = fin.getChannel();
+            // 一次读取20m
+            ByteBuffer byteBuffer = ByteBuffer.allocate(ONCE_READ_SIZE);
+            while (channel.read(byteBuffer) > 0) {
+//                byte[] bytes = byteBuffer.array();
+                byteBuffer.flip();
+                byte[] bytes = new byte[byteBuffer.limit()];
+                byteBuffer.get(bytes);
+                for (byte b: bytes) {
+                    countBytes.put(b, countBytes.getOrDefault(b, 0) + 1);
+                }
+                byteBuffer.clear();
+            }
+            channel.close();
+            fin.close();
+
+            return countBytes;
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }finally {
+            close(channel);
+            close(fin);
+        }
+
+        return countBytes;
     }
 
     // 读取赫夫曼编码表

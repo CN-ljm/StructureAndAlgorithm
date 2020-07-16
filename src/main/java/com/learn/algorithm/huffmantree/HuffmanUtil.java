@@ -29,13 +29,15 @@ public class HuffmanUtil {
 
     private static Map<Byte, String> huffmanCodingMap = null;
 
+    private static Map<String, Byte> huffmanDecodingMap = null;
+
     // 一次性读取文件大小先来 20M
     private static int ONCE_READ_SIZE = 1024 * 1024 * 10;
 
     public static void main(String[] args) {
-        huffmanZip("E:/test/aa.txt", "E:/test/aa.zip");
-        System.out.println(huffmanCodingMap.toString());
-//        huffmanUnzip("E:/test/aa.zip", "E:/test/aa-src.txt");
+//        huffmanZip("E:/test/hello.txt", "E:/test/hello.zip");
+//        System.out.println(huffmanCodingMap.toString());
+        huffmanUnzip("E:/test/hello.zip", "E:/test/hello-src.txt");
     }
 
     /**
@@ -146,24 +148,75 @@ public class HuffmanUtil {
      * @param tarPath 目标路径
      */
     public static void huffmanUnzip(String srcPath, String tarPath) {
-        byte[] bytes = FileUtil.readFileWithNIO(srcPath);
+        File srcFile = new File(srcPath);
+        if (!srcFile.exists()) {
+            return;
+        }
         // 读取赫夫曼编码表
         huffmanHelper = readHuffmanCodingMap(srcPath + ".huf");
         huffmanCodingMap = huffmanHelper.getHuffmanCodingMap();
-        byte[] zipBytes = deCodingWithHuffman(bytes);
-        FileUtil.writeFileWithNIO(zipBytes, tarPath);
-    }
+        // 将哈夫曼编码表反转一下
+        huffmanDecodingMap = new HashMap<>();
+        for (Map.Entry<Byte, String> entry: huffmanCodingMap.entrySet()) {
+            huffmanDecodingMap.put(entry.getValue(), entry.getKey());
+        }
 
-    /**
-     * 解码哈夫曼编码字符串
-     * @param huffmanByte
-     * @return
-     */
-    public static String deCodingStrWithHuffman(byte[] huffmanByte) {
+        //先建好文件
+        String prefix = tarPath.substring(0, tarPath.lastIndexOf("/"));
+        String[] tmp = tarPath.split("/");
+        if (tmp.length < 2) {
+            throw new RuntimeException("文件路径错误");
+        }
+        File file = new File(prefix);
+        if (!file.exists()) {
+            file.mkdirs();
+        }
 
-        byte[] bytes = deCodingWithHuffman(huffmanByte);
+        File outFile = new File(tarPath);
+        FileInputStream fin = null;
+        FileOutputStream fout = null;
+        FileChannel inChannel = null;
+        FileChannel outChannel = null;
+        try {
+            if (!outFile.exists()) {
+                outFile.createNewFile();
+            }
+            fin = new FileInputStream(srcFile);
+            fout = new FileOutputStream(outFile);
+            inChannel = fin.getChannel();
+            outChannel = fout.getChannel();
+            long sum = srcFile.length() / ONCE_READ_SIZE;
+            // 用来计算是不是最后一次读取
+            int count = 0;
+            ByteBuffer bb = ByteBuffer.allocate(ONCE_READ_SIZE);
+            while (inChannel.read(bb) > 0) {
+                count += 1;
+                // 得到对应的赫夫曼编码
+                //这样分批编码的话，最后一个不满八位怎么算，，，计入下一次来计算
+                bb.flip();
+                byte[] srcByte = new byte[bb.limit()];
+                bb.get(srcByte);
+                boolean needFillZero = false;
+                if (sum == count - 1) {
+                    needFillZero = true;
+                }
+                byte[] bytes = deCodingWithHuffman(srcByte, needFillZero);
+                outChannel.write(ByteBuffer.wrap(bytes));
 
-        return new String(bytes);
+                bb.clear();
+            }
+            outChannel.close();
+            inChannel.close();
+            fout.close();
+            fin.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }finally {
+            close(outChannel);
+            close(inChannel);
+            close(fout);
+            close(fin);
+        }
     }
 
     /**
@@ -259,17 +312,12 @@ public class HuffmanUtil {
      * @param huffmanBytes
      * @return
      */
-    public static byte[] deCodingWithHuffman(byte[] huffmanBytes) {
-        // 将哈夫曼编码表反转一下
-        Map<String, Byte> huffmanDecodingMap = new HashMap<>();
-        for (Map.Entry<Byte, String> entry: huffmanCodingMap.entrySet()) {
-            huffmanDecodingMap.put(entry.getValue(), entry.getKey());
-        }
+    public static byte[] deCodingWithHuffman(byte[] huffmanBytes, boolean needFillZero) {
 
         StringBuilder sb = new StringBuilder();
         for (int i=0; i < huffmanBytes.length; i++) {
             // 赫夫曼编码得到二进制字符串最后一个编码可能不足八位，不需要用进行补位
-            boolean flag = (i == huffmanBytes.length-1);
+            boolean flag = (i == huffmanBytes.length-1) && needFillZero;
             if (flag) {
                 String s = byteToBinaryString(false, huffmanBytes[i]);
                 // 说明赫夫曼编码构造最后byte时，构造的二级制字符串是0开头，byte不能处理0开头，所以要记录

@@ -1,7 +1,5 @@
 package com.learn.algorithm.huffmantree;
 
-import com.learn.help.utils.FileUtil;
-
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -32,12 +30,12 @@ public class HuffmanUtil {
     private static Map<String, Byte> huffmanDecodingMap = null;
 
     // 一次性读取文件大小先来 20M
-    private static int ONCE_READ_SIZE = 1024 * 1024 * 10;
+    private static int ONCE_READ_SIZE = 1024 * 1024 * 20;
 
     public static void main(String[] args) {
-//        huffmanZip("E:/test/hello.txt", "E:/test/hello.zip");
+        huffmanZip("E:/test/mysql.pdf", "E:/test/mysql.zip");
 //        System.out.println(huffmanCodingMap.toString());
-        huffmanUnzip("E:/test/hello.zip", "E:/test/hello-src.txt");
+        huffmanUnzip("E:/test/mysql.zip", "E:/test/mysql-src.pdf");
     }
 
     /**
@@ -92,7 +90,7 @@ public class HuffmanUtil {
                 bb.clear();
             }
             // 处理最后的不满8位的字符串
-            String lastStr = huffmanHelper.getLastByteStr();
+            String lastStr = huffmanHelper.getEnLastByteStr();
             if (lastStr != null && !"".equals(lastStr)) {
                 //判断是不是 0 开头
                 byte lastByte = (byte) Integer.parseInt(lastStr, 2);
@@ -187,11 +185,13 @@ public class HuffmanUtil {
             inChannel = fin.getChannel();
             outChannel = fout.getChannel();
             long sum = srcFile.length() / ONCE_READ_SIZE;
+//            System.out.println("sum:" + sum);
             // 用来计算是不是最后一次读取
             int count = 0;
             ByteBuffer bb = ByteBuffer.allocate(ONCE_READ_SIZE);
             while (inChannel.read(bb) > 0) {
                 count += 1;
+//                System.out.println("解码次数：" + count);
                 // 得到对应的赫夫曼编码
                 //这样分批编码的话，最后一个不满八位怎么算，，，计入下一次来计算
                 bb.flip();
@@ -201,11 +201,19 @@ public class HuffmanUtil {
                 if (sum == count - 1) {
                     needFillZero = true;
                 }
+                // 进行分批解码，最后一个字节得到的二进制字符串有可能无法解码成功，记录下来参与下一次的解码
                 byte[] bytes = deCodingWithHuffman(srcByte, needFillZero);
                 outChannel.write(ByteBuffer.wrap(bytes));
 
                 bb.clear();
             }
+
+            //最后检查一下，不应该存在有未参与解码的字符串
+            if (huffmanHelper.getDeLastByteStr() != null) {
+                System.out.println("未解码二进制字符串：" + huffmanHelper.getDeLastByteStr());
+                throw new RuntimeException("解码发生错误，未完全解码！");
+            }
+
             outChannel.close();
             inChannel.close();
             fout.close();
@@ -336,8 +344,16 @@ public class HuffmanUtil {
             }
         }
 //        System.out.println("哈夫曼编码：" + sb.toString());
-        String hfmStr = sb.toString();
-
+        String hfmStr = null;
+        // 看看是否有上次留下来未解码的字符串，如果有需要拼接到前面参与解码
+        String deLastByteStr = huffmanHelper.getDeLastByteStr();
+        if (deLastByteStr != null && !"".equals(deLastByteStr)) {
+            hfmStr = deLastByteStr + sb.toString();
+            // 如果取走了就置空，防止重复解码
+            huffmanHelper.setDeLastByteStr(null);
+        } else {
+            hfmStr = sb.toString();
+        }
         //在这里进行解码
         List<Byte> byteList = new ArrayList<>();
         for (int i=0; i < hfmStr.length(); ) {
@@ -345,6 +361,13 @@ public class HuffmanUtil {
             int count = 0;
             String s = null;
             while (true){
+                // 如果越界了，就先记下来，参与下一次解码
+                if (i + count > hfmStr.length()) {
+                    huffmanHelper.setDeLastByteStr(hfmStr.substring(i));
+                    // 结束循环
+                    i += count;
+                    break;
+                }
                 s = hfmStr.substring(i, i + count);
                 Byte b = huffmanDecodingMap.get(s);
                 if (b != null) {
@@ -374,8 +397,8 @@ public class HuffmanUtil {
     private static byte[] getHuffmanByte(byte[] src) {
         StringBuilder sb = new StringBuilder();
         // 先看下之前有没有剩下的
-        if (huffmanHelper.getLastByteStr() != null && !"".equals(huffmanHelper.getLastByteStr())) {
-            sb.append(huffmanHelper.getLastByteStr());
+        if (huffmanHelper.getEnLastByteStr() != null && !"".equals(huffmanHelper.getEnLastByteStr())) {
+            sb.append(huffmanHelper.getEnLastByteStr());
         }
         for (byte b: src) {
             sb.append(huffmanCodingMap.get(b));
@@ -389,7 +412,7 @@ public class HuffmanUtil {
             if (i + 8 > sb.length()) {
                 String lastStr = sb.substring(i);
                 // 存起来组成最后一个字节的字符串
-                huffmanHelper.setLastByteStr(lastStr);
+                huffmanHelper.setEnLastByteStr(lastStr);
                 /*target[index] = (byte)Integer.parseInt(lastStr, 2);
                 // 计算0的个数，直到下一个是1
                 int count = 0;
@@ -413,7 +436,7 @@ public class HuffmanUtil {
                 }*/
 
             } else {
-                huffmanHelper.setLastByteStr(null);
+                huffmanHelper.setEnLastByteStr(null);
                 target[index] = (byte)Integer.parseInt(sb.substring(i, i+8), 2);
             }
             index++;

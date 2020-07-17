@@ -22,7 +22,9 @@ public class HuffmanHelper implements Serializable {
      */
     private int fillZeroCount = 0;
 
-    private String lastByteStr;
+    private String enLastByteStr;
+
+    private String deLastByteStr;
 
     public Map<Byte, String> getHuffmanCodingMap() {
         return huffmanCodingMap;
@@ -40,11 +42,19 @@ public class HuffmanHelper implements Serializable {
         this.fillZeroCount = fillZeroCount;
     }
 
-    public String getLastByteStr() {
-        return lastByteStr;
+    public String getEnLastByteStr() {
+        return enLastByteStr;
     }
 
-    public void setLastByteStr(String lastByteStr) {
-        this.lastByteStr = lastByteStr;
+    public void setEnLastByteStr(String enLastByteStr) {
+        this.enLastByteStr = enLastByteStr;
+    }
+
+    public String getDeLastByteStr() {
+        return deLastByteStr;
+    }
+
+    public void setDeLastByteStr(String deLastByteStr) {
+        this.deLastByteStr = deLastByteStr;
     }
 }

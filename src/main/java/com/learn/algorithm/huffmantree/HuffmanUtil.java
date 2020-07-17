@@ -86,7 +86,8 @@ public class HuffmanUtil {
                 byte[] srcByte = new byte[bb.limit()];
                 bb.get(srcByte);
                 byte[] bytes = enCodingByteWithHuffman(srcByte);
-                outChannel.write(ByteBuffer.wrap(bytes));
+                ByteBuffer wrap = ByteBuffer.wrap(bytes);
+                outChannel.write(wrap);
 
                 bb.clear();
             }
@@ -379,13 +380,15 @@ public class HuffmanUtil {
         for (byte b: src) {
             sb.append(huffmanCodingMap.get(b));
         }
+//        System.out.println("编码后的字符串:" + sb.toString());
         // 进行转码
-        int len = (sb.length() + 7)/8;
+        int len = sb.length()/8;
         byte[] target = new byte[len];
         int index = 0;
         for (int i=0; i < sb.length(); i+=8) {
             if (i + 8 > sb.length()) {
                 String lastStr = sb.substring(i);
+                // 存起来组成最后一个字节的字符串
                 huffmanHelper.setLastByteStr(lastStr);
                 /*target[index] = (byte)Integer.parseInt(lastStr, 2);
                 // 计算0的个数，直到下一个是1
@@ -415,7 +418,6 @@ public class HuffmanUtil {
             }
             index++;
         }
-
         return target;
     }
 

@@ -2,6 +2,9 @@ package com.learn.algorithm.sort;
 
 /**
  * 冒泡排序算法
+ * 平均时间复杂度：O(n*n)
+ * 空间复杂度：O(1)
+ * 稳定性：稳定
  */
 public class BubbleSort {
 

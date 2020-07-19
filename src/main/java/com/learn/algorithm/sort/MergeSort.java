@@ -3,6 +3,9 @@ package com.learn.algorithm.sort;
 
 /**
  * 归并排序
+ * 平均时间复杂度：O(nlogn)
+ * 空间复杂度：O(n)
+ * 稳定性：稳定
  */
 public class MergeSort {
 

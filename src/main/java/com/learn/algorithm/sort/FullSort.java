@@ -1,7 +1,7 @@
 package com.learn.algorithm.sort;
 
 /**
- * 全排序
+ * 全排序（是一种求不同数据组合的个数的算法，不是一种排序算法）
  */
 public class FullSort {
 

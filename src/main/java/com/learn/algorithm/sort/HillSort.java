@@ -3,7 +3,10 @@ package com.learn.algorithm.sort;
 import java.awt.image.AreaAveragingScaleFilter;
 
 /**
- * 希尔排序
+ * 希尔排序（按一定增量进行分组，然后对每组进行插入排序）
+ * 平均时间复杂度：O(nlogn)
+ * 空间复杂度：O（1）
+ * 稳定性：不稳定
  */
 public class HillSort {
 

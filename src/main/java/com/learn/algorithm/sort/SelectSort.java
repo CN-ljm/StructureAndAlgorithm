@@ -2,6 +2,9 @@ package com.learn.algorithm.sort;
 
 /**
  * 选择排序法
+ * 平均时间复杂度：O(n*n)
+ * 空间复杂度：O(1)
+ * 稳定性：不稳定
  */
 public class SelectSort {
 

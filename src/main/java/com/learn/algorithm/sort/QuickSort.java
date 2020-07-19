@@ -1,6 +1,9 @@
 package com.learn.algorithm.sort;
 /**
  * 快速排序
+ * 平均时间复杂度：O(nlogn)
+ * 空间复杂度：O(1)
+ * 稳定性：不稳定
  */
 public class QuickSort {
 

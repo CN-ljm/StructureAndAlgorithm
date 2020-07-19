@@ -4,6 +4,9 @@ import java.util.Stack;
 
 /**
  * 基数排序（桶排序）
+ * 平均时间复杂度：O(logRB)，B是真数（0-9），R是基数（个、十、百）
+ * 空间复杂度：O(n)
+ * 稳定性：稳定
  */
 public class RadixSort {
 
